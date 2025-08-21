@@ -18,7 +18,7 @@ runs:
       uses: actions/checkout@v4
     - name: Run PRs report generator
       shell: bash
-      run: 'export ORIGIN_REPO="$PWD" && (cd $GITHUB_ACTION_PATH && go run ./main.go -file $ORIGIN_REPO/README.md -user ${{ github.repository_owner }} -ignore "${{ inputs.ignore }})"'
+      run: 'export ORIGIN_REPO="$PWD" && (cd $GITHUB_ACTION_PATH && go run ./main.go -file $ORIGIN_REPO/README.md -user ${{ github.repository_owner }} -ignore "${{ inputs.ignore }}")'
     - name: Save changes
       uses: stefanzweifel/git-auto-commit-action@v6
       with:
