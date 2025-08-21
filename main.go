@@ -119,12 +119,13 @@ func updateFile(file *os.File, text string) {
 	orig := string(data)
 	start := "<!--START_SECTION:prlist-->"
 	end := "<!--END_SECTION:prlist-->"
-	wrapped := start + "\n" + text + "\n" + end
+	wrapped := start + "\n" + text + end + "\n"
 
 	if strings.Contains(orig, start) && strings.Contains(orig, end) {
 		re := regexp.MustCompile(`(?sm)^` + start + `.*?` + end)
 		result := re.ReplaceAllString(orig, wrapped)
 		file.Seek(0, 0)
+		file.Truncate(0)
 		_, err := io.Copy(file, bytes.NewBuffer([]byte(result)))
 		if err != nil {
 			log.Fatal(err)
@@ -147,39 +148,24 @@ func renderHTMLTemplate(text, user string, repos []Repo) string {
 }
 
 func reposToHTML(user string, repos []Repo) string {
-	tmpl := `
-{{$user := .user}}
-<ul>
-	{{ range .repos }}
-  <li> <a href="{{prlink $user . }}">{{ .Owner }}/{{ .Name }}</a> </li>
-	{{ end }}
-</ul>
-	`
+	tmpl := "{{$user := .user}}<ul>\n{{ range .repos }}<li> <a href=\"{{prlink $user . }}\">{{ .Owner }}/{{ .Name }}</a> </li>\n{{ end }}</ul>"
 	return renderHTMLTemplate(tmpl, user, repos)
 }
 
 func reposToBrHTML(user string, repos []Repo) string {
-	tmpl := `
-{{$user := .user}}
-{{ range .repos }}
-<a href="{{prlink $user . }}">{{ .Owner }}/{{ .Name }}</a> <br>
-{{ end }}
-	`
+	tmpl := "{{$user := .user}}{{ range .repos }}<a href=\"{{prlink $user . }}\">{{ .Owner }}/{{ .Name }}</a> <br>\n{{ end }}"
 	return renderHTMLTemplate(tmpl, user, repos)
 }
 
 func reposToMd(user string, repos []Repo) string {
 	list := ""
-	for i, repo := range repos {
+	for _, repo := range repos {
 		list += fmt.Sprintf(
-			"- [%s/%s](%s)",
+			"- [%s/%s](%s)\n",
 			repo.Owner,
 			repo.Name,
 			getLinkToPRs(user, repo),
 		)
-		if i < len(repos)-1 {
-			list += "\n"
-		}
 	}
 	return list
 }
