@@ -1,14 +1,14 @@
 package main
 
 import (
-	"flag"
-	"fmt"
-	"log"
-
 	"bytes"
 	"cmp"
 	"context"
+	"flag"
+	"fmt"
+	"html/template"
 	"io"
+	"log"
 	"maps"
 	"net/url"
 	"os"
@@ -20,7 +20,7 @@ import (
 )
 
 func main() {
-	fileName, user, ignoreStr := getArgs()
+	fileName, user, ignoreStr, format := getArgs()
 	ctx := context.Background()
 	block := IgnorFromString(ignoreStr)
 	found := findPRs(ctx, user, &block)
@@ -29,23 +29,31 @@ func main() {
 		log.Fatal(err)
 	}
 	defer file.Close()
-	updateFile(file, reposToMd(user, found))
+	text := ""
+	switch format {
+	case "md":
+		text = reposToMd(user, found)
+	case "html":
+		text = reposToHTML(user, found)
+	}
+	updateFile(file, text)
 }
 
-func getArgs() (string, string, string) {
+func getArgs() (string, string, string, string) {
 	file := flag.String("file", "", "target file")
 	user := flag.String("user", "", "github user")
 	ignore := flag.String("ignore", "", "repos to ignore")
+	format := flag.String("format", "md", "repos to ignore")
 	flag.Parse()
 	if *file == "" || *user == "" {
 		log.Fatal("Not all cli args are passed")
 	}
-	return *file, *user, *ignore
+	return *file, *user, *ignore, *format
 }
 
 type Repo struct {
-	owner string
-	name  string
+	Owner string
+	Name  string
 }
 
 type Ignore struct {
@@ -90,11 +98,11 @@ func (i *Ignore) Match(repo Repo) bool {
 	if ok {
 		return true
 	}
-	_, ok = i.owners[repo.owner]
+	_, ok = i.owners[repo.Owner]
 	if ok {
 		return true
 	}
-	_, ok = i.names[repo.name]
+	_, ok = i.names[repo.Name]
 	if ok {
 		return true
 	}
@@ -123,25 +131,55 @@ func updateFile(file *os.File, text string) {
 	}
 }
 
+func reposToHTML(user string, repos []Repo) string {
+	t := `
+{{$user := .user}}
+<ul>
+	{{ range .repos }}
+  <li> <a href="{{prlink $user . }}">{{ .Owner }}/{{ .Name }}</a> </li>
+	{{ end }}
+</ul>
+	`
+	funcMap := template.FuncMap{
+		"prlink": getLinkToPRs,
+	}
+	tmpl := template.Must(template.New("template").Funcs(funcMap).Parse(t))
+	buf := bytes.Buffer{}
+	err := tmpl.Execute(&buf, map[string]any{"user": user, "repos": repos})
+	if err != nil {
+		log.Fatal(err)
+	}
+	return buf.String()
+}
+
 func reposToMd(user string, repos []Repo) string {
 	list := ""
 	for i, repo := range repos {
-		// https://github.com/rpgp/rpgp/pulls?q=is%3Apr%20author%3Aasciimoth
-		u := &url.URL{
-			Scheme: "https",
-			Host:   "github.com",
-			Path:   fmt.Sprintf("/%s/%s/pulls", repo.owner, repo.name),
-		}
-		v := url.Values{}
-		v.Set("q", fmt.Sprintf("is:pr author:%s", user))
-		u.RawQuery = v.Encode()
-
-		list += fmt.Sprintf("- [%s/%s](%s)", repo.owner, repo.name, u.String())
+		list += fmt.Sprintf(
+			"- [%s/%s](%s)",
+			repo.Owner,
+			repo.Name,
+			getLinkToPRs(user, repo),
+		)
 		if i < len(repos)-1 {
 			list += "\n"
 		}
 	}
 	return list
+}
+
+func getLinkToPRs(user string, repo Repo) string {
+	// https://github.com/rpgp/rpgp/pulls?q=is%3Apr%20author%3Aasciimoth
+	u := &url.URL{
+		Scheme: "https",
+		Host:   "github.com",
+		Path:   fmt.Sprintf("/%s/%s/pulls", repo.Owner, repo.Name),
+	}
+	v := url.Values{}
+	v.Set("q", fmt.Sprintf("is:pr author:%s", user))
+	u.RawQuery = v.Encode()
+
+	return u.String()
 }
 
 func findPRs(ctx context.Context, user string, block *Ignore) []Repo {

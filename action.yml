@@ -6,6 +6,11 @@ inputs:
     description: "Ignored repos"
     required: false
     default: ":"
+  format:
+    # WARN: Value of format input will be passed to arg of shell command as is, so it should be received only from trusted sources
+    description: "Format md/html"
+    required: false
+    default: "md"
 
 runs:
   using: "composite"
@@ -18,7 +23,7 @@ runs:
       uses: actions/checkout@v4
     - name: Run PRs report generator
       shell: bash
-      run: 'export ORIGIN_REPO="$PWD" && (cd $GITHUB_ACTION_PATH && go run ./main.go -file $ORIGIN_REPO/README.md -user ${{ github.repository_owner }} -ignore "${{ inputs.ignore }}")'
+      run: 'export ORIGIN_REPO="$PWD" && (cd $GITHUB_ACTION_PATH && go run ./main.go -file $ORIGIN_REPO/README.md -user ${{ github.repository_owner }} -ignore "${{ inputs.ignore }}" -format "${{ inputs.format }}")'
     - name: Save changes
       uses: stefanzweifel/git-auto-commit-action@v6
       with:
