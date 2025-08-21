@@ -35,6 +35,8 @@ func main() {
 		text = reposToMd(user, found)
 	case "html":
 		text = reposToHTML(user, found)
+	case "html-br":
+		text = reposToBrHTML(user, found)
 	}
 	updateFile(file, text)
 }
@@ -131,8 +133,21 @@ func updateFile(file *os.File, text string) {
 	}
 }
 
+func renderHTMLTemplate(text, user string, repos []Repo) string {
+	funcMap := template.FuncMap{
+		"prlink": getLinkToPRs,
+	}
+	tmpl := template.Must(template.New("template").Funcs(funcMap).Parse(text))
+	buf := bytes.Buffer{}
+	err := tmpl.Execute(&buf, map[string]any{"user": user, "repos": repos})
+	if err != nil {
+		log.Fatal(err)
+	}
+	return buf.String()
+}
+
 func reposToHTML(user string, repos []Repo) string {
-	t := `
+	tmpl := `
 {{$user := .user}}
 <ul>
 	{{ range .repos }}
@@ -140,16 +155,17 @@ func reposToHTML(user string, repos []Repo) string {
 	{{ end }}
 </ul>
 	`
-	funcMap := template.FuncMap{
-		"prlink": getLinkToPRs,
-	}
-	tmpl := template.Must(template.New("template").Funcs(funcMap).Parse(t))
-	buf := bytes.Buffer{}
-	err := tmpl.Execute(&buf, map[string]any{"user": user, "repos": repos})
-	if err != nil {
-		log.Fatal(err)
-	}
-	return buf.String()
+	return renderHTMLTemplate(tmpl, user, repos)
+}
+
+func reposToBrHTML(user string, repos []Repo) string {
+	tmpl := `
+{{$user := .user}}
+{{ range .repos }}
+<a href="{{prlink $user . }}">{{ .Owner }}/{{ .Name }}</a> <br>
+{{ end }}
+	`
+	return renderHTMLTemplate(tmpl, user, repos)
 }
 
 func reposToMd(user string, repos []Repo) string {

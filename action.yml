@@ -8,7 +8,7 @@ inputs:
     default: ":"
   format:
     # WARN: Value of format input will be passed to arg of shell command as is, so it should be received only from trusted sources
-    description: "Format md/html"
+    description: "Format md/html/html-br"
     required: false
     default: "md"
 
