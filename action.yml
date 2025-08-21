@@ -1,0 +1,25 @@
+name: prlist
+
+inputs:
+  ignore:
+    # WARN: Value of ignore input will be passed to arg of shell command as is, so it should be received only from trusted sources
+    description: "Ignored repos"
+    required: false
+    default: ":"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24'
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Run PRs report generator
+      shell: bash
+      run: 'export ORIGIN_REPO="$PWD" && (cd $GITHUB_ACTION_PATH && go run ./main.go -file $ORIGIN_REPO/README.md -user ${{ github.repository_owner }} -ignore "${{ inputs.ignore }})"'
+    - name: Save changes
+      uses: stefanzweifel/git-auto-commit-action@v6
+      with:
+        commit_message: "docs: update pr report"
