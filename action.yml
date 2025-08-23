@@ -1,6 +1,10 @@
 name: prlist
 description: Displays your pull requests in a README file.
 
+branding:
+  color: yellow
+  icon: activity
+
 inputs:
   ignore:
     # WARN: Value of ignore input will be passed to arg of shell command as is, so it should be received only from trusted sources
