@@ -1,3 +1,15 @@
+// Prlist updates a target file by replacing the content between
+// <!--START_SECTION:prlist--> and <!--END_SECTION:prlist--> with a list
+// of repositories that have merged PRs authored by a specified GitHub user.
+//
+// Usage (flags):
+// -file (string) target file to update (required)
+// -user (string) GitHub username to search PRs for (required)
+// -ignore (string) colon-separated ignore list (e.g. "org/*:*/repo")
+// -format (string) output format: "md" (default), "html", or "html-br"
+//
+// Example:
+// go run . -file README.md -user torvalds -ignore "org/*:*/repo" -format md
 package main
 
 import (
@@ -41,6 +53,7 @@ func main() {
 	updateFile(file, text)
 }
 
+// getArgs parses CLI flags and returns file, user, ignore and format values.
 func getArgs() (string, string, string, string) {
 	file := flag.String("file", "", "target file")
 	user := flag.String("user", "", "github user")
@@ -53,17 +66,23 @@ func getArgs() (string, string, string, string) {
 	return *file, *user, *ignore, *format
 }
 
+// Repo identifies a GitHub repository by owner and name.
 type Repo struct {
 	Owner string
 	Name  string
 }
 
+// Ignore holds sets of owners, names or explicit repos that should be skipped.
+// It is constructed from the -ignore CLI flag.
 type Ignore struct {
 	owners map[string]struct{}
 	names  map[string]struct{}
 	repos  map[Repo]struct{}
 }
 
+// IgnorFromString parses the ignore string into an Ignore structure. The
+// format is a colon-separated list of owner/name pairs. Use "owner/*" to
+// ignore all repos of an owner, "*/name" to ignore all repos with that name.
 func IgnorFromString(str string) Ignore {
 	owners := map[string]struct{}{}
 	names := map[string]struct{}{}
@@ -92,6 +111,7 @@ func IgnorFromString(str string) Ignore {
 	return Ignore{owners, names, repos}
 }
 
+// Match reports whether the given repo should be ignored.
 func (i *Ignore) Match(repo Repo) bool {
 	if i == nil {
 		return false
@@ -111,6 +131,8 @@ func (i *Ignore) Match(repo Repo) bool {
 	return false
 }
 
+// updateFile replaces the content between markers <!--START_SECTION:prlist--> and
+// <!--END_SECTION:prlist--> in the provided file with the supplied text.
 func updateFile(file *os.File, text string) {
 	data, err := io.ReadAll(file)
 	if err != nil {
@@ -134,6 +156,7 @@ func updateFile(file *os.File, text string) {
 	}
 }
 
+// renderHTMLTemplate executes a small HTML template with helper functions.
 func renderHTMLTemplate(text, user string, repos []Repo) string {
 	funcMap := template.FuncMap{
 		"prlink": getLinkToPRs,
@@ -147,16 +170,19 @@ func renderHTMLTemplate(text, user string, repos []Repo) string {
 	return buf.String()
 }
 
+// reposToHTML returns a simple unordered list of repo links in HTML.
 func reposToHTML(user string, repos []Repo) string {
 	tmpl := "{{$user := .user}}<ul>\n{{ range .repos }}<li> <a href=\"{{prlink $user . }}\">{{ .Owner }}/{{ .Name }}</a> </li>\n{{ end }}</ul>"
 	return renderHTMLTemplate(tmpl, user, repos)
 }
 
+// reposToBrHTML returns repo links separated by <br> tags.
 func reposToBrHTML(user string, repos []Repo) string {
 	tmpl := "{{$user := .user}}{{ range .repos }}<a href=\"{{prlink $user . }}\">{{ .Owner }}/{{ .Name }}</a> <br>\n{{ end }}"
 	return renderHTMLTemplate(tmpl, user, repos)
 }
 
+// reposToMd renders the repositories as Markdown list of links.
 func reposToMd(user string, repos []Repo) string {
 	list := ""
 	for _, repo := range repos {
@@ -170,8 +196,9 @@ func reposToMd(user string, repos []Repo) string {
 	return list
 }
 
+// getLinkToPRs builds a GitHub search URL that lists PRs authored by user in repo.
 func getLinkToPRs(user string, repo Repo) string {
-	// https://github.com/rpgp/rpgp/pulls?q=is%3Apr%20author%3Aasciimoth
+	// e.g. https://github.com/rpgp/rpgp/pulls?q=is%3Apr%20author%3Aasciimoth
 	u := &url.URL{
 		Scheme: "https",
 		Host:   "github.com",
@@ -184,6 +211,9 @@ func getLinkToPRs(user string, repo Repo) string {
 	return u.String()
 }
 
+// findPRs searches GitHub for merged PRs by the provided user and returns
+// a sorted list of unique repositories (most recently merged first). The
+// block parameter can be used to exclude certain repos/owners/names.
 func findPRs(ctx context.Context, user string, block *Ignore) []Repo {
 	client := github.NewClient(nil)
 	query := fmt.Sprintf("is:pr author:%s is:merged", user)

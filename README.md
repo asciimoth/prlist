@@ -8,8 +8,8 @@
 # TODO
 - [ ] Action
     - [ ] Caching
-- [ ] Code
-    - [ ] Comments
+- [X] Code
+    - [X] Comments
 - [ ] README
     - [ ] Instalation example
     - [ ] Action's intputs documantation
