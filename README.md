@@ -17,7 +17,7 @@ Merged pull requests by Linus Torvalds:
 
 ## Usage
 ### 1. Add Sections to Your README
-Include the following placeholders (without leading spaces) in your README.md where you want the activity log to appear:
+Include the following placeholders in your `README`:
 ```md
 <!--START_SECTION:prlist-->
 <!--END_SECTION:prlist-->
@@ -90,19 +90,4 @@ So there is also the `html-br` format which produce just a set of links separate
 <a href="https://github.com/libgit2/libgit2/pulls?q=is%3Apr&#43;author%3Atorvalds">libgit2/libgit2</a> <br>
 <!--END_SECTION:prlist-->
 ```
-
-# TODO
-- [ ] Action
-    - [ ] Caching
-- [X] Code
-    - [X] Comments
-- [X] README
-    - [X] Instalation example
-    - [X] Action's intputs documantation
-- [ ] Repo description
-- [X] v0.1 release
-- [ ] Marketplace
-    - [ ] Add marketplace link to repo
-- [ ] Go doc page
-- [ ] Awesome list(s)?
 
