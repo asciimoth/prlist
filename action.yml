@@ -1,4 +1,5 @@
 name: prlist
+description: Displays your pull requests in a README file.
 
 inputs:
   ignore:
